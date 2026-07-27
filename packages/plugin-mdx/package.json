@@ -1,6 +1,6 @@
 {
   "name": "@go-git-cms/plugin-mdx",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "An MDX body editor for Go·Git CMS: ProseMirror prose, imports and exports in a footer, and live rendering of the project's own React components with inline prop editing.",
   "type": "module",
   "main": "src/index.js",
