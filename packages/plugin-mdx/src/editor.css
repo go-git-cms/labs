@@ -1,0 +1,1018 @@
+/*
+ * The MDX editor's surface. Every color comes from a `--mdx-*` variable set on
+ * the root from the design system's theme (see MdxEditor.tsx), so light and
+ * dark are one set of rules and the editor never drifts from the rest of the
+ * CMS. Fallbacks keep it legible if it is ever mounted without a provider.
+ */
+
+.cms-editor {
+  --mdx-bg: #ffffff;
+  --mdx-raised: #ffffff;
+  --mdx-sunken: #f7f7f7;
+  --mdx-hover: #f7f7f7;
+  --mdx-active: #ededed;
+  --mdx-fg: #0a0a0a;
+  --mdx-muted: #5c5c5c;
+  --mdx-faint: #808080;
+  --mdx-border: #dcdcdc;
+  --mdx-border-subtle: #ededed;
+  --mdx-accent: #5c5c5c;
+  --mdx-warn-fg: #b42318;
+  --mdx-warn-bg: #fbeae8;
+  --mdx-ok-fg: #1a7f37;
+  --mdx-ok-bg: #e6f4ea;
+  --mdx-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mdx-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  color: var(--mdx-fg);
+  background: var(--mdx-bg);
+  font: 14px/1.6 var(--mdx-font);
+  border: 1px solid var(--mdx-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Focus mode takes over the viewport, not the pane the editor sits in. */
+.cms-editor--expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  height: 100%;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+}
+
+.cms-editor__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.cms-editor--expanded .cms-editor__scroll .ProseMirror {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 25vh;
+}
+
+/* -------------------------------------------------------------- toolbar */
+
+.cms-editor__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--mdx-border-subtle);
+  background: var(--mdx-raised);
+}
+
+.cms-editor__toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px;
+  background: var(--mdx-border-subtle);
+}
+
+.cms-editor__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mdx-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cms-editor__tool:hover:not(:disabled) {
+  background: var(--mdx-hover);
+  color: var(--mdx-fg);
+}
+
+.cms-editor__tool:focus-visible {
+  outline: 2px solid var(--mdx-accent);
+  outline-offset: -1px;
+}
+
+.cms-editor__tool[aria-pressed="true"],
+.cms-editor__tool[aria-expanded="true"] {
+  background: var(--mdx-active);
+  color: var(--mdx-fg);
+}
+
+.cms-editor__tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cms-editor__tool--expand {
+  margin-left: auto;
+}
+
+/* Insert-a-component menu */
+
+.cms-editor__menu {
+  position: relative;
+}
+
+.cms-editor__menu-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 8px;
+  background: var(--mdx-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.cms-editor__menu-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mdx-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cms-editor__menu-item:hover {
+  background: var(--mdx-hover);
+}
+
+.cms-editor__menu-name {
+  font-family: var(--mdx-mono);
+  font-size: 12px;
+}
+
+.cms-editor__menu-note {
+  margin-left: auto;
+  color: var(--mdx-faint);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cms-editor__menu-empty {
+  margin: 0;
+  padding: 8px;
+  color: var(--mdx-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cms-editor__menu-empty code {
+  font-family: var(--mdx-mono);
+}
+
+/* ---------------------------------------------------------- prose surface */
+
+.cms-editor .ProseMirror {
+  padding: 16px 20px;
+  min-height: 160px;
+  line-height: 1.65;
+  outline: none;
+  word-wrap: break-word;
+}
+
+.cms-editor .ProseMirror[contenteditable="false"] {
+  opacity: 0.85;
+}
+
+.cms-editor .ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.cms-editor .ProseMirror p {
+  margin: 0 0 0.85em;
+}
+
+.cms-editor .ProseMirror h1,
+.cms-editor .ProseMirror h2,
+.cms-editor .ProseMirror h3,
+.cms-editor .ProseMirror h4,
+.cms-editor .ProseMirror h5,
+.cms-editor .ProseMirror h6 {
+  margin: 1.4em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.cms-editor .ProseMirror h1 { font-size: 1.75em; }
+.cms-editor .ProseMirror h2 { font-size: 1.4em; }
+.cms-editor .ProseMirror h3 { font-size: 1.18em; }
+.cms-editor .ProseMirror h4 { font-size: 1em; }
+
+.cms-editor .ProseMirror a {
+  color: var(--mdx-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cms-editor .ProseMirror code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--mdx-sunken);
+  font-family: var(--mdx-mono);
+  font-size: 0.88em;
+}
+
+.cms-editor .ProseMirror pre {
+  margin: 0 0 0.85em;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--mdx-sunken);
+  font-family: var(--mdx-mono);
+  font-size: 0.85em;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.cms-editor .ProseMirror pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.cms-editor .ProseMirror blockquote {
+  margin: 0 0 0.85em;
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid var(--mdx-border);
+  color: var(--mdx-muted);
+}
+
+.cms-editor .ProseMirror hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--mdx-border);
+}
+
+.cms-editor .ProseMirror ul,
+.cms-editor .ProseMirror ol {
+  margin: 0 0 0.85em;
+  padding-inline-start: 1.4em;
+}
+
+.cms-editor .ProseMirror li p {
+  margin: 0 0 0.35em;
+}
+
+.cms-editor .ProseMirror img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.cms-editor .ProseMirror-selectednode {
+  outline: 2px solid var(--mdx-accent);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------ MDX blocks */
+
+/* A block expression or raw HTML: source is all there is to show. */
+.cms-editor .mdx-raw {
+  position: relative;
+  margin: 1rem 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px dashed var(--mdx-border);
+  border-radius: 6px;
+  background: var(--mdx-sunken);
+  color: var(--mdx-muted);
+  font: 0.8125rem/1.5 var(--mdx-mono);
+  white-space: pre-wrap;
+  user-select: all;
+}
+
+.cms-editor .mdx-raw::after {
+  content: attr(data-kind);
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: var(--mdx-faint);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cms-editor .mdx-expression {
+  padding: 0.1em 0.3em;
+  border: 1px dashed var(--mdx-border);
+  border-radius: 4px;
+  background: var(--mdx-sunken);
+  color: var(--mdx-muted);
+  font-family: var(--mdx-mono);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------- JSX flow element */
+
+.cms-editor .mdx-jsx {
+  position: relative;
+  margin: 1.1rem 0;
+  border: 1px solid var(--mdx-border);
+  border-radius: 6px;
+  background: var(--mdx-raised);
+}
+
+/* A matched component renders as itself. No border, no background, no header —
+   nothing of the editor's between the component and the page. The only
+   addition is the control that floats over its corner. */
+.cms-editor .mdx-jsx--live {
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+/* ProseMirror needs the contentDOM in the document even when the element has
+   no children and the component was rendered self-closing. */
+.cms-editor .mdx-jsx__parked {
+  display: none;
+}
+
+.cms-editor .mdx-jsx__controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 6px;
+  /* Legible over whatever the component happens to render underneath. */
+  background: var(--mdx-raised);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  user-select: none;
+}
+
+.cms-editor .mdx-jsx--live:hover > .mdx-jsx__controls,
+.cms-editor .mdx-jsx--live:focus-within > .mdx-jsx__controls,
+.cms-editor .mdx-jsx--fragment:hover > .mdx-jsx__controls,
+.cms-editor .mdx-jsx--fragment:focus-within > .mdx-jsx__controls {
+  opacity: 1;
+}
+
+/* An outline rather than a border, so revealing it costs no layout. */
+.cms-editor .mdx-jsx--live:hover,
+.cms-editor .mdx-jsx--fragment:hover {
+  outline: 1px dashed var(--mdx-border);
+  outline-offset: 2px;
+}
+
+/* A fragment has no rendering of its own — pass the children through and keep
+   only the hover handle, which carries the slot name when there is one. */
+.cms-editor .mdx-jsx--fragment {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+.cms-editor .mdx-jsx--fragment > .mdx-jsx__body {
+  padding: 0;
+}
+
+.cms-editor .mdx-jsx__fragment-label {
+  padding-inline: 4px;
+  color: var(--mdx-faint);
+  font-family: var(--mdx-mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cms-editor .mdx-jsx--card {
+  border-style: dashed;
+}
+
+.cms-editor .mdx-jsx__chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 4px 3px 10px;
+  border-bottom: 1px solid var(--mdx-border-subtle);
+  background: var(--mdx-sunken);
+  border-radius: 5px 5px 0 0;
+  user-select: none;
+}
+
+.cms-editor .mdx-jsx__name {
+  color: var(--mdx-fg);
+  font-family: var(--mdx-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cms-editor .mdx-jsx__badge {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--mdx-ok-bg);
+  color: var(--mdx-ok-fg);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.cms-editor .mdx-jsx__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--mdx-warn-bg);
+  color: var(--mdx-warn-fg);
+  font-size: 10px;
+  cursor: help;
+}
+
+.cms-editor .mdx-jsx__spacer {
+  flex: 1;
+}
+
+.cms-editor .mdx-jsx__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mdx-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+
+/* The edit affordance stays out of the way until the block is under the
+   pointer or focused — but never hides from the keyboard. */
+.cms-editor .mdx-jsx:hover .mdx-jsx__edit,
+.cms-editor .mdx-jsx:focus-within .mdx-jsx__edit,
+.cms-editor .mdx-jsx__edit:focus-visible {
+  opacity: 1;
+}
+
+.cms-editor .mdx-jsx__edit:hover {
+  background: var(--mdx-active);
+  color: var(--mdx-fg);
+}
+
+.cms-editor .mdx-jsx__attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.cms-editor .mdx-jsx__attr {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--mdx-sunken);
+  color: var(--mdx-muted);
+  font-family: var(--mdx-mono);
+  font-size: 11px;
+}
+
+.cms-editor .mdx-jsx__attr--empty {
+  background: none;
+  color: var(--mdx-faint);
+  font-style: italic;
+}
+
+.cms-editor .mdx-jsx__error,
+.cms-editor .mdx-jsx__loading {
+  margin: 0;
+  padding: 0 10px 8px;
+  color: var(--mdx-warn-fg);
+  font-size: 11px;
+}
+
+.cms-editor .mdx-jsx__loading {
+  color: var(--mdx-faint);
+}
+
+/* The component's own markup. Untouched except for keeping oversized media
+   inside the editor's width. */
+.cms-editor .mdx-jsx__render img,
+.cms-editor .mdx-jsx__render video,
+.cms-editor .mdx-jsx__render canvas {
+  max-width: 100%;
+}
+
+.cms-editor .mdx-jsx--live .mdx-jsx__body {
+  padding: 0;
+  outline: none;
+}
+
+.cms-editor .mdx-jsx__body:not(:empty) {
+  padding: 2px 10px;
+}
+
+.cms-editor .mdx-jsx__body > :last-child {
+  margin-bottom: 0;
+}
+
+.cms-editor .mdx-jsx--card > .mdx-jsx__body:not(:empty) {
+  padding-bottom: 8px;
+}
+
+.cms-editor .mdx-jsx__children-label {
+  padding: 6px 10px 0;
+  color: var(--mdx-faint);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.cms-editor .mdx-jsx--editing {
+  border-style: solid;
+  border-color: var(--mdx-accent);
+}
+
+/* ------------------------------------------------------- JSX text element */
+
+.cms-editor .mdx-jsx-text {
+  position: relative;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--mdx-border);
+}
+
+.cms-editor .mdx-jsx-text__tag {
+  padding: 0 3px;
+  border: none;
+  border-radius: 3px 0 0 3px;
+  background: var(--mdx-sunken);
+  color: var(--mdx-muted);
+  font-family: var(--mdx-mono);
+  font-size: 0.75em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cms-editor .mdx-jsx-text__tag:hover {
+  background: var(--mdx-active);
+  color: var(--mdx-fg);
+}
+
+.cms-editor .mdx-jsx-text__body {
+  padding: 0 2px;
+}
+
+.cms-editor .mdx-jsx-text__pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 15;
+  display: block;
+  min-width: 320px;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+}
+
+/* --------------------------------------------------------------- footnotes */
+
+.cms-editor .footnote-ref {
+  padding: 0 0.15em;
+  color: var(--mdx-muted);
+  font-size: 0.7em;
+  cursor: default;
+}
+
+.cms-editor .footnote-def {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid var(--mdx-border);
+  font-size: 0.875rem;
+}
+
+.cms-editor .footnote-def__marker {
+  color: var(--mdx-muted);
+  user-select: none;
+}
+
+.cms-editor .footnote-def__body {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------- props form */
+
+.cms-editor .mdx-form {
+  padding: 8px;
+  border-radius: 5px;
+  background: var(--mdx-sunken);
+  user-select: none;
+}
+
+.cms-editor .mdx-form__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cms-editor .mdx-form__title {
+  color: var(--mdx-fg);
+  font-family: var(--mdx-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cms-editor .mdx-form__spacer {
+  flex: 1;
+}
+
+.cms-editor .mdx-form__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 5px;
+  background: var(--mdx-raised);
+  color: var(--mdx-muted);
+  font: 500 12px/1 var(--mdx-font);
+  cursor: pointer;
+}
+
+.cms-editor .mdx-form__btn:hover {
+  background: var(--mdx-hover);
+  color: var(--mdx-fg);
+}
+
+.cms-editor .mdx-form__btn--primary {
+  border-color: var(--mdx-fg);
+  background: var(--mdx-fg);
+  color: var(--mdx-bg);
+}
+
+.cms-editor .mdx-form__btn--primary:hover {
+  background: var(--mdx-fg);
+  color: var(--mdx-bg);
+  opacity: 0.9;
+}
+
+.cms-editor .mdx-form__empty {
+  margin: 0 0 8px;
+  color: var(--mdx-faint);
+  font-size: 12px;
+}
+
+.cms-editor .mdx-form__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cms-editor .mdx-form__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cms-editor .mdx-form__name,
+.cms-editor .mdx-form__value,
+.cms-editor .mdx-form__mode {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 5px;
+  background: var(--mdx-raised);
+  color: var(--mdx-fg);
+  font: 12px/1 var(--mdx-font);
+}
+
+.cms-editor .mdx-form__name {
+  flex: 0 0 120px;
+  font-family: var(--mdx-mono);
+}
+
+.cms-editor .mdx-form__mode {
+  flex: 0 0 72px;
+  font-family: var(--mdx-mono);
+  cursor: pointer;
+}
+
+.cms-editor .mdx-form__value {
+  flex: 1;
+  min-width: 0;
+}
+
+.cms-editor .mdx-form__value--mono {
+  font-family: var(--mdx-mono);
+}
+
+.cms-editor .mdx-form__name:focus,
+.cms-editor .mdx-form__value:focus,
+.cms-editor .mdx-form__mode:focus {
+  outline: none;
+  border-color: var(--mdx-accent);
+}
+
+.cms-editor .mdx-form__flag,
+.cms-editor .mdx-form__spread {
+  flex: 1;
+  color: var(--mdx-faint);
+  font-family: var(--mdx-mono);
+  font-size: 12px;
+}
+
+.cms-editor .mdx-form__spread {
+  flex: 0 0 120px;
+}
+
+.cms-editor .mdx-form__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mdx-faint);
+  cursor: pointer;
+}
+
+.cms-editor .mdx-form__icon:hover {
+  background: var(--mdx-warn-bg);
+  color: var(--mdx-warn-fg);
+}
+
+.cms-editor .mdx-form__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.cms-editor .mdx-form__suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cms-editor .mdx-form__chip {
+  padding: 3px 7px;
+  border: 1px dashed var(--mdx-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mdx-muted);
+  font: 11px/1 var(--mdx-mono);
+  cursor: pointer;
+}
+
+.cms-editor .mdx-form__chip:hover {
+  border-style: solid;
+  background: var(--mdx-raised);
+  color: var(--mdx-fg);
+}
+
+.cms-editor .mdx-form__chip--required {
+  border-color: var(--mdx-warn-fg);
+  color: var(--mdx-warn-fg);
+}
+
+.cms-editor .mdx-form__preview {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mdx-border-subtle);
+  color: var(--mdx-faint);
+  font: 11px/1.5 var(--mdx-mono);
+  word-break: break-all;
+}
+
+/* ------------------------------------------------------- imports / exports */
+
+.cms-editor__footer {
+  border-top: 1px solid var(--mdx-border-subtle);
+  background: var(--mdx-sunken);
+}
+
+.cms-editor__footer-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 3px 6px 3px 8px;
+}
+
+.cms-editor__footer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mdx-muted);
+  cursor: pointer;
+}
+
+.cms-editor__footer-toggle:hover {
+  background: var(--mdx-hover);
+  color: var(--mdx-fg);
+}
+
+.cms-editor__footer-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cms-editor__footer-count {
+  color: var(--mdx-faint);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cms-editor__chips {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cms-editor__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.cms-editor__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex: 0 0 auto;
+  max-width: 220px;
+  padding: 2px 7px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 999px;
+  background: var(--mdx-raised);
+  color: var(--mdx-fg);
+  font: 11px/1.5 var(--mdx-mono);
+  cursor: pointer;
+}
+
+.cms-editor__chip:hover {
+  border-color: var(--mdx-accent);
+}
+
+.cms-editor__chip--export {
+  border-style: dashed;
+}
+
+.cms-editor__chip--warn {
+  border-color: var(--mdx-warn-fg);
+  color: var(--mdx-warn-fg);
+}
+
+.cms-editor__chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cms-editor__chip-from {
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--mdx-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cms-editor__footer-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--mdx-warn-bg);
+  color: var(--mdx-warn-fg);
+  font-size: 11px;
+  cursor: help;
+}
+
+.cms-editor__footer-add {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.cms-editor__footer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  padding: 4px 8px 10px;
+  overflow-y: auto;
+  border-top: 1px solid var(--mdx-border-subtle);
+}
+
+.cms-editor__footer-empty {
+  margin: 6px 0;
+  color: var(--mdx-faint);
+  font-size: 12px;
+}
+
+.cms-editor__esm {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.cms-editor__esm-kind {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--mdx-active);
+  color: var(--mdx-muted);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.cms-editor__esm-src {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--mdx-border);
+  border-radius: 5px;
+  background: var(--mdx-raised);
+  color: var(--mdx-fg);
+  font: 12px/1.5 var(--mdx-mono);
+  resize: vertical;
+}
+
+.cms-editor__esm-src:focus {
+  outline: none;
+  border-color: var(--mdx-accent);
+}
+
+.cms-editor__esm-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mdx-faint);
+  cursor: pointer;
+}
+
+.cms-editor__esm-remove:hover {
+  background: var(--mdx-warn-bg);
+  color: var(--mdx-warn-fg);
+}
+
+.cms-editor__footer-fix {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.cms-editor__footer-fixlabel {
+  color: var(--mdx-faint);
+  font-size: 11px;
+}

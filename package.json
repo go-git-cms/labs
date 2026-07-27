@@ -1,0 +1,17 @@
+{
+  "name": "gogitcms-labs",
+  "private": true,
+  "description": "Experimental packages that extend Go·Git CMS.",
+  "type": "module",
+  "// packageManager": "Matches the pin in the gogitcms monorepo, so a package developed here installs the same way it will there.",
+  "packageManager": "pnpm@11.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+*.tgz
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+
+# OS
+.DS_Store

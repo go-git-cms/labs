@@ -1,0 +1,13 @@
+/*
+ * Source for the stylesheet the MDX editor loads so the project's components
+ * look like themselves inside the CMS.
+ *
+ * `@tailwind base` is deliberately absent. Preflight is a global reset — it
+ * would restyle the CMS's own chrome, not just the components. Utilities and
+ * components are class-scoped, so they only reach markup that asks for them.
+ *
+ * Regenerate with `npm run cms:styles` after using a class the editor has not
+ * seen before.
+ */
+@tailwind components;
+@tailwind utilities;

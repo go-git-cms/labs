@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+
+# Every host resolves react and the @go-git-cms/* packages to its own copy, so a
+# labs package must never bundle a second one. They are optional peers in each
+# manifest; pinning them here keeps a workspace install from resolving two.
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
