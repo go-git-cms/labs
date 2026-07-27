@@ -29,6 +29,7 @@ release, not from here.
 
 ```
 packages/<name>/       one npm package, published as @go-git-cms/<name>
+scripts/               release tooling (see Publishing)
 pnpm-workspace.yaml    workspace members + the react/react-dom pin
 .npmrc                 points the @go-git-cms scope at GitHub Packages
 ```
@@ -205,13 +206,36 @@ Two things worth writing down every time:
 
 ### Publishing
 
-Nothing here publishes automatically. When a package is ready to be installed
-by name, publish it to GitHub Packages under the `@go-git-cms` scope (the
-`publishConfig` above already points there) with a `write:packages` token:
+Publishing is automatic. `.github/workflows/publish-packages.yml` releases each
+package to GitHub Packages under the `@go-git-cms` scope, with a **minor** bump,
+whenever that package's contents change on `main`. There is no per-package CI to
+write: the matrix is discovered from `packages/*` at run time, so a package is
+released as soon as it is not `private` and its manifest has the `publishConfig`
+shown above. A package that is not ready for that should say `"private": true`.
 
-```bash
-pnpm --filter @go-git-cms/plugin-thing publish --access restricted
-```
+What the pipeline actually does, per package:
+
+| | |
+| --- | --- |
+| **Gate** | `scripts/release-package.mjs` fingerprints the package's tracked files — with `package.json`'s `version` excluded — against its last `<dir>-v*` tag, and exits quietly when they match. So a test-only push, a revert to identical content, and the release's own bump commit all publish nothing |
+| **Bump** | `npm version minor`, no commit yet |
+| **Resolve** | Any `workspace:*` range is rewritten to `^<sibling's version>`. npm does not understand the protocol, and a package published carrying one fails on install with an error naming the protocol rather than the package |
+| **Publish** | `npm publish`, routed by the manifest's own `publishConfig.registry` |
+| **Record** | *Only after publish succeeds*: commit the bump with `[skip ci]`, tag `<dir>-v<version>`, rebase onto `main`, push |
+
+Two ordering details are load-bearing and worth not re-deriving later. Publish
+happens **before** tagging: tag first, and a failed build leaves a tag behind
+with nothing released, which makes the content gate skip that package forever.
+And the matrix runs **serially in dependency order** (`scripts/list-packages.mjs`
+topologically sorts on `workspace:*` edges), because each job pushes a commit —
+parallel jobs would race — and because a package pinned to a sibling's current
+version must not publish before that sibling's bump has landed.
+
+Running it by hand: **Actions → Publish packages → Run workflow**. The content
+gate still applies, so a manual run only releases what genuinely changed — the
+fix path for a package whose publish failed. `force` releases everything
+regardless; `dry_run` packs and prints what would go out, then commits, tags and
+pushes nothing.
 
 Graduating a package into the main monorepo is the other path, and the better
 one for anything that has stopped being an experiment: move it to `packages/`

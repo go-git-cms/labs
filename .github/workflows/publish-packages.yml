@@ -1,0 +1,107 @@
+name: Publish packages
+
+# Publishes every labs package to GitHub Packages (npm.pkg.github.com) with a
+# minor version bump whenever its *contents* change on the default branch.
+#
+# The matrix is discovered from packages/* at run time (scripts/list-packages.mjs)
+# rather than listed here: adding a labs package should not mean editing CI. A
+# package is released when it is not `private` and its package.json carries
+# publishConfig.registry — see the contributing section of README.md.
+#
+# The paths filter below is only a cheap pre-filter; the real gate is in
+# scripts/release-package.mjs, which fingerprints the package's tracked files
+# (package.json version excluded) against its latest release tag and exits
+# quietly when nothing changed. That is also what terminates the loop the
+# version-bump commit would otherwise cause (belt: [skip ci] on that commit).
+#
+# Note GitHub Packages authenticates reads: consumers need a read:packages
+# token in their .npmrc even though the repo is public.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "scripts/release-package.mjs"
+      - ".github/workflows/publish-packages.yml"
+  # Re-cut by hand. By default the content gate still applies, so a manual run
+  # only releases packages whose contents changed since their last tag (or
+  # whose tag is missing) — the fix path for a package that failed to publish.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release all packages even if unchanged"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Publish with --dry-run; no commit, tag or push"
+        type: boolean
+        default: false
+
+# One release train at a time — the jobs push version-bump commits.
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - id: list
+        run: echo "packages=$(node scripts/list-packages.mjs)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: discover
+    # An empty matrix is a workflow error, not a no-op run.
+    if: needs.discover.outputs.packages != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # version-bump commits + release tags
+      packages: write # publish to GitHub Packages
+    strategy:
+      # Serial: each job may push a version-bump commit, and parallel pushes to
+      # the same branch would race. Also lets a package that depends on a
+      # sibling pick up the version the sibling just released.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        pkg: ${{ fromJSON(needs.discover.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          # Full history: the content gate diffs against the last release tag.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        if: ${{ matrix.pkg.needsInstall }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: pnpm install --frozen-lockfile
+        if: ${{ matrix.pkg.needsInstall }}
+
+      # Deliberately not actions/setup-node's `registry-url`: that also sets
+      # npm.pkg.github.com as the *default* registry, which sends the install
+      # above there too — and it cannot serve prosemirror et al. Writing only
+      # the auth line leaves the default registry alone; each package's
+      # publishConfig.registry is what routes the publish. It goes in
+      # RUNNER_TEMP rather than the repo's own .npmrc so the working tree stays
+      # clean for the `git pull --rebase` at the end of the release.
+      - name: Authenticate to GitHub Packages
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > "$RUNNER_TEMP/.npmrc"
+          echo "NPM_CONFIG_USERCONFIG=$RUNNER_TEMP/.npmrc" >> "$GITHUB_ENV"
+
+      - name: Release if contents changed
+        run: node scripts/release-package.mjs "${{ matrix.pkg.dir }}" "${{ matrix.pkg.tag }}"
+        env:
+          FORCE_RELEASE: ${{ inputs.force }}
+          DRY_RUN: ${{ inputs.dry_run }}
